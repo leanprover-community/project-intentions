@@ -1,0 +1,30 @@
+# Drives the project board from issue events and `claim` / `disclaim` comments, and runs a
+# scheduled sweep that releases expired registrations. See
+# https://github.com/leanprover-community/intentions for the full command vocabulary.
+name: Intentions
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, closed, reopened]
+  schedule:
+    # Every 6 hours, offset to avoid the top of the hour. This is the sweep that expires lapsed
+    # registrations; GitHub cron is loose, so release lags the schedule by a few minutes.
+    - cron: "17 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  intentions:
+    permissions:
+      issues: write
+      pull-requests: write
+    uses: leanprover-community/intentions/.github/workflows/intentions.yml@v1
+    with:
+      project-title: "Project Intentions"   # the exact title of the Projects v2 board
+      default-ttl: "30d"                     # one month (the action counts a month as 30 days)
+      max-ttl: "180d"                        # six months
+      auto-add-labels: "intention"           # only add issues opened via the template (which carries this label)
+      app-id: ${{ vars.INTENTIONS_BOT_APP_ID }}
+    secrets:
+      app-private-key: ${{ secrets.INTENTIONS_BOT_APP_PRIVATE_KEY }}

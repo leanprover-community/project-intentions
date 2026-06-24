@@ -1,0 +1,103 @@
+name: Project intention
+description: Register a project you're working on, so others can find you and avoid duplicating it.
+title: "[Intention] "
+labels: [intention]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for registering a project. A few things to keep in mind before you start:
+
+        - **This is purely informational.** Nobody is obliged to respect, check, or even read your
+          registration. It is not a queue, a lock, or a priority right. It buys you no claim over
+          anything; it just makes your intentions visible.
+        - **Be specific, and be credible.** A vague registration with an optimistic expiry helps
+          nobody and discourages others. Say exactly what you're doing, and give an expiry you
+          actually believe.
+        - **This repository is public.** For private work, describe it only at the level you're happy
+          to make public, and leave out anything confidential.
+  - type: textarea
+    id: description
+    attributes:
+      label: What are you working on?
+      description: >
+        Be specific. Name the theorem, definition, or area, and where it sits. "Formalising the
+        Radon-Nikodym theorem, extending Mathlib.MeasureTheory.Decomposition.Lebesgue" is useful;
+        "working on analysis" is not.
+      placeholder: Describe the project as concretely as you can.
+    validations:
+      required: true
+  - type: dropdown
+    id: visibility
+    attributes:
+      label: Is this happening in public or in private?
+      description: Public means the work (or its repository) is openly visible; private means it isn't yet.
+      options:
+        - Public
+        - Private
+    validations:
+      required: true
+  - type: input
+    id: repository
+    attributes:
+      label: Repository, or where the public work is visible (required for public work)
+      description: >
+        If the work is public, link the repository, branch, or directory where it's happening. If it's
+        public but there's no repository yet, say where people can see it. Leave blank only if the
+        project is private for now.
+      placeholder: https://github.com/...
+    validations:
+      required: false
+  - type: input
+    id: event
+    attributes:
+      label: Associated conference, workshop, meeting, sprint, or seminar (if any)
+      description: >
+        If this work is tied to a specific event or recurring meeting — a formalisation workshop, a
+        sprint, a hackathon, a seminar — name it and roughly when it's happening.
+      placeholder: e.g. Lean Together 2026, or a formalisation week in September.
+    validations:
+      required: false
+  - type: dropdown
+    id: student-research
+    attributes:
+      label: Is this associated with student research?
+      description: >
+        For example a thesis, a supervised project, or a class. This helps people understand the
+        context, and be considerate of work that students are depending on.
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true
+  - type: input
+    id: student-research-details
+    attributes:
+      label: Student research details (required if you answered yes)
+      description: >
+        If yes, say a little more: the kind of project (thesis, class, supervised project), the
+        institution or programme if you're happy to, and the supervisor if relevant.
+    validations:
+      required: false
+  - type: input
+    id: expiry
+    attributes:
+      label: Credible expiry date
+      description: >
+        When do you genuinely expect to have made real progress or finished? Be honest: an expiry you
+        don't believe is worse than none. Maximum six months. You'll use this value in your `claim`
+        comment in the next step.
+      placeholder: e.g. 3 months, or 2026-09-01
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ### One more step after you submit
+
+        Registering takes a comment, not just this form. Once the issue is open, **comment
+        `claim <your expiry>`** on it — for example `claim 3 months` or `claim 2026-09-01`. A bare
+        `claim` defaults to 30 days, so include your date if you want a different one.
+
+        Renew by claiming again before it lapses, and `disclaim` to release it early once you're done
+        or have moved on.
