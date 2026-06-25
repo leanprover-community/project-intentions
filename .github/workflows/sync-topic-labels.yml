@@ -1,0 +1,59 @@
+# Mirrors Mathlib's `t-` topic labels (name, colour, description) into this repository, so the
+# "Relevant Mathlib topic areas" dropdown maps onto real, filterable labels. Run it by hand from the
+# Actions tab whenever Mathlib gains or renames a topic area. Additive: it creates or updates `t-`
+# labels but never deletes one, so a label still in use here won't vanish if Mathlib drops it.
+name: Sync topic labels
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const upstream = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner: 'leanprover-community',
+              repo: 'mathlib4',
+              per_page: 100,
+            })
+            const topics = upstream.filter((l) => l.name.startsWith('t-'))
+            core.info(`Found ${topics.length} t- labels upstream.`)
+
+            const here = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            })
+            const byName = new Map(here.map((l) => [l.name, l]))
+
+            let created = 0, updated = 0
+            for (const l of topics) {
+              const existing = byName.get(l.name)
+              if (!existing) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: l.name,
+                  color: l.color,
+                  description: l.description || '',
+                })
+                created++
+                continue
+              }
+              if (existing.color !== l.color || (existing.description || '') !== (l.description || '')) {
+                await github.rest.issues.updateLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: l.name,
+                  color: l.color,
+                  description: l.description || '',
+                })
+                updated++
+              }
+            }
+            core.notice(`Topic labels synced: ${created} created, ${updated} updated.`)
