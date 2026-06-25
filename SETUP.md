@@ -28,16 +28,22 @@ repository, or the template silently can't apply it and nothing gets added.
 ## Authentication
 
 The default `GITHUB_TOKEN` cannot write an org-level Projects v2 board, so the action runs as a
-GitHub App. Setup is a one-time web flow:
+GitHub App. Create it by hand (the board is org-owned, so Projects R/W goes under *Organization*
+permissions):
 
-1. Create the App with the one-click form:
-   <https://leanprover-community.github.io/intentions/create-app.html> (enter `leanprover-community`;
-   permissions and webhook-off are pre-filled).
-2. On the new App: generate a private key (`.pem`), note the **App ID**, and install the App on this
-   repository.
-3. In this repo, Settings -> Secrets and variables -> Actions, add:
+1. Org -> Settings -> Developer settings -> GitHub Apps -> **New GitHub App**
+   (<https://github.com/organizations/leanprover-community/settings/apps>).
+2. Name it (e.g. `leanprover-community-intentions`); set any valid homepage URL; under **Webhook**,
+   untick **Active**.
+3. **Permissions:**
+   - Repository permissions -> **Issues**: Read and write; **Pull requests**: Read and write.
+   - Organization permissions -> **Projects**: Read and write.
+4. **Where can this GitHub App be installed?** -> Only on this account. Create the App.
+5. Note the **App ID**, generate a **private key** (`.pem`), and **install** the App on this
+   repository (Install App in the App's sidebar).
+6. In this repo, Settings -> Secrets and variables -> Actions, add:
    - variable **`INTENTIONS_BOT_APP_ID`** = the App ID;
-   - secret **`INTENTIONS_BOT_APP_PRIVATE_KEY`** = the contents of the `.pem`.
+   - secret **`INTENTIONS_BOT_APP_PRIVATE_KEY`** = the full contents of the `.pem`.
 
 A fine-grained PAT with Projects R/W works too; see the intentions README for that route.
 
