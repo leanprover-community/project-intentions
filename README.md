@@ -62,4 +62,4 @@ The claim/expiry machinery is the
 which tracks each issue on the
 [Project Intentions board](https://github.com/orgs/leanprover-community/projects/34) and runs a
 scheduled sweep to release expired claims. `claim` and `disclaim` are the two commands you need; see
-that repository for the rest. Maintainer setup is recorded in [SETUP.md](SETUP.md).
+that repository for the rest.
