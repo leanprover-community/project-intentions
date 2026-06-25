@@ -36,13 +36,12 @@ It's brand new, and experimental. We'll see if people use it, and iterate as nee
 ## How to register
 
 1. Open a new issue using the **Project intention** template, and fill it in. Say what you're working
-   on, whether it's public or private, and the other details the template asks for.
-2. **Then comment `claim` on your issue to register yourself, with an expiry.** This is a separate,
-   required step: the expiry you wrote in the form is just text until you set it here. A bare `claim`
-   uses the default (30 days); `claim 3 months` or `claim 2026-09-01` sets your own, up to the
-   six-month maximum.
-3. When something changes, just `claim` again to renew or extend. Use `disclaim` to release a
-   registration early once you've stopped (or finished).
+   on, whether it's public or private, the credible expiry date, and the other details the template
+   asks for. Submitting the form registers you — the bot reads your expiry and comments to confirm,
+   with no separate step.
+2. When something changes, comment `claim` again to renew or extend (a bare `claim` uses the default
+   30 days; `claim 3 months` or `claim 2026-09-01` sets your own, up to the six-month maximum). Use
+   `disclaim` to release a registration early once you've stopped (or finished).
 
 Registrations that lapse are swept automatically, so the registry reflects what people actually
 believe they're still working on, not what they once intended.
