@@ -6,7 +6,7 @@ The point is to help people find collaborators and avoid quietly duplicating eac
 
 It's not a reservation system, although credible intentions about student projects should certainly be respected on a best effort basis!
 
-It's brand new, and experimental. We'll see if people use it, and iterate as need to make it more useful. Feedback welcome.
+It's brand new, and experimental. We'll see if people use it, and iterate as needed to make it more useful. Feedback welcome.
 
 ## Please read this first
 
@@ -18,8 +18,8 @@ It's brand new, and experimental. We'll see if people use it, and iterate as nee
 - **It's purely informational.** If two people register overlapping work, that's a conversation to
   have, not a dispute to resolve here.
 - **Be nice.** We like working in a community. Make use of the information here to make friends, find collaborators,
-  and contribute to our collective goals. Don't use to to make things worse by scooping projects!
-- **Respect students.** The research training pipeline is critical to the health of mathematics, and formal matheamatics.
+  and contribute to our collective goals. Don't use it to make things worse by scooping projects!
+- **Respect students.** The research training pipeline is critical to the health of mathematics, and formal mathematics.
   Everything has been upended by AI, and we need to collectively work out a good path to the future.
   Look after your students, and other students, and pay special attention to what will help them.
 - **Be specific.** "Working on analysis" helps nobody. "Formalising the Radon-Nikodym theorem,
