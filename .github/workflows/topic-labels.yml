@@ -21,13 +21,13 @@ jobs:
             const heading = 'Relevant Mathlib topic areas'
 
             // Capture the lines under our form field's heading, up to the next "### " heading or EOF.
-            const re = new RegExp(`(^|\\n)###\\s+${heading}\\s*\\n([\\s\\S]*?)(?=\\n###\\s|$)`)
+            const re = new RegExp(`(?:^|\\n)###[ \\t]+${heading}[ \\t]*\\r?\\n([\\s\\S]*?)(?=\\r?\\n###[ \\t]|$)`)
             const m = body.match(re)
             if (!m) {
               core.info(`No "${heading}" section in the issue body; nothing to do.`)
               return
             }
-            const section = m[2].trim()
+            const section = m[1].trim()
             if (!section || section === '_No response_') {
               core.info('No topic areas selected; nothing to do.')
               return
