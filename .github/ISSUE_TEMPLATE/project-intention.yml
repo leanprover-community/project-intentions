@@ -28,6 +28,43 @@ body:
     validations:
       required: true
   - type: dropdown
+    id: topics
+    attributes:
+      label: Relevant Mathlib topic areas
+      description: >
+        Select any Mathlib topic areas this work touches. These mirror the `t-` labels used in the
+        Mathlib repository, and they let people filter the board by area. The labels you pick here are
+        applied to the issue automatically. Leave blank if none fit (for example, work outside Mathlib).
+      multiple: true
+      options:
+        - t-algebra
+        - t-algebraic-geometry
+        - t-algebraic-topology
+        - t-analysis
+        - t-category-theory
+        - t-combinatorics
+        - t-computability
+        - t-condensed
+        - t-convex-geometry
+        - t-data
+        - t-differential-geometry
+        - t-dynamics
+        - t-euclidean-geometry
+        - t-functional-analysis
+        - t-geometric-group-theory
+        - t-group-theory
+        - t-linter
+        - t-logic
+        - t-measure-probability
+        - t-meta
+        - t-number-theory
+        - t-order
+        - t-ring-theory
+        - t-set-theory
+        - t-topology
+    validations:
+      required: false
+  - type: dropdown
     id: visibility
     attributes:
       label: Is this happening in public or in private?

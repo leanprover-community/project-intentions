@@ -1,0 +1,72 @@
+# Reads the "Relevant Mathlib topic areas" dropdown from the issue form and applies the chosen
+# `t-` labels to the issue, so the board can be filtered by area. Additive only: it never removes a
+# label, so a maintainer's manual labels are left alone. The labels themselves are kept in sync with
+# Mathlib by sync-topic-labels.yml.
+name: Apply topic labels
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  topic-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || ''
+            const heading = 'Relevant Mathlib topic areas'
+
+            // Capture the lines under our form field's heading, up to the next "### " heading or EOF.
+            const re = new RegExp(`(?:^|\\n)###[ \\t]+${heading}[ \\t]*\\r?\\n([\\s\\S]*?)(?=\\r?\\n###[ \\t]|$)`)
+            const m = body.match(re)
+            if (!m) {
+              core.info(`No "${heading}" section in the issue body; nothing to do.`)
+              return
+            }
+            const section = m[1].trim()
+            if (!section || section === '_No response_') {
+              core.info('No topic areas selected; nothing to do.')
+              return
+            }
+
+            // The dropdown renders selected options as a comma-separated list. Take exact tokens.
+            const selected = section.split(',').map((s) => s.trim()).filter(Boolean)
+
+            // Only apply labels that actually exist on this repo and are topic (`t-`) labels, so a
+            // stray line in the body can never create or apply an arbitrary label.
+            const repoLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            })
+            const topicLabels = new Set(
+              repoLabels.map((l) => l.name).filter((n) => n.startsWith('t-')),
+            )
+
+            const toApply = selected.filter((s) => topicLabels.has(s))
+            const unknown = selected.filter((s) => !topicLabels.has(s))
+            if (unknown.length) core.info(`Ignoring unrecognised topic entries: ${unknown.join(', ')}`)
+            if (!toApply.length) {
+              core.info('No recognised topic labels to apply.')
+              return
+            }
+
+            // Don't re-apply what's already there (keeps the timeline quiet on edits).
+            const existing = new Set((context.payload.issue.labels || []).map((l) => l.name))
+            const fresh = toApply.filter((n) => !existing.has(n))
+            if (!fresh.length) {
+              core.info('Selected topic labels are already present; nothing to add.')
+              return
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels: fresh,
+            })
+            core.info(`Applied topic labels: ${fresh.join(', ')}`)
