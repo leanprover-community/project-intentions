@@ -22,7 +22,7 @@ jobs:
     uses: leanprover-community/intentions/.github/workflows/intentions.yml@v1
     with:
       project-title: "Project Intentions"   # the exact title of the Projects v2 board
-      default-ttl: "30d"                     # one month (the action counts a month as 30 days)
+      default-ttl: "90d"                     # three months (the action counts a month as 30 days)
       max-ttl: "180d"                        # six months
       auto-add-labels: "intention"           # only add issues opened via the template (which carries this label)
       claim-on-open: true                    # register from the form alone; no separate `claim` comment

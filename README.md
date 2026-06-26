@@ -40,7 +40,7 @@ It's brand new, and experimental. We'll see if people use it, and iterate as nee
    asks for. Submitting the form registers you — the bot reads your expiry and comments to confirm,
    with no separate step.
 2. When something changes, comment `claim` again to renew or extend (a bare `claim` uses the default
-   30 days; `claim 3 months` or `claim 2026-09-01` sets your own, up to the six-month maximum). Use
+   3 months; `claim 6 weeks` or `claim 2026-09-01` sets your own, up to the six-month maximum). Use
    `disclaim` to release a registration early once you've stopped (or finished).
 
 Registrations that lapse are swept automatically, so the registry reflects what people actually
@@ -48,7 +48,7 @@ believe they're still working on, not what they once intended.
 
 ## Expiry
 
-- Default: **30 days** (about a month).
+- Default: **90 days** (about three months).
 - Maximum: **180 days** (about six months).
 
 Renew by claiming again before it lapses. A lapsed registration isn't a judgement on you; it just
