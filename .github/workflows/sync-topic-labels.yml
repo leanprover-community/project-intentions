@@ -1,7 +1,7 @@
-# Mirrors Mathlib's `t-` topic labels (name, colour, description) into this repository, so the
-# "Relevant Mathlib topic areas" dropdown maps onto real, filterable labels. Runs daily, and on
-# demand from the Actions tab. Additive: it creates or updates `t-` labels but never deletes one, so
-# a label still in use here won't vanish if Mathlib drops it.
+# Mirrors Mathlib's `t-` topic labels (name, colour, description) into this repository, then rewrites
+# the issue form's "Relevant Mathlib topic areas" dropdown to match, so every label is both real and
+# pickable. Runs daily, and on demand from the Actions tab. Additive on labels: it creates or updates
+# `t-` labels but never deletes one, so a label still in use here won't vanish if Mathlib drops it.
 name: Sync topic labels
 
 on:
@@ -14,8 +14,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      issues: write
+      issues: write     # create/update labels
+      contents: write   # commit the regenerated issue form
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/github-script@v7
         with:
           script: |
@@ -60,3 +62,21 @@ jobs:
               }
             }
             core.notice(`Topic labels synced: ${created} created, ${updated} updated.`)
+
+      - name: Sync the issue-form topic dropdown to match
+        run: python3 scripts/sync_form_topics.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Commit the form if it changed
+        run: |
+          form=.github/ISSUE_TEMPLATE/project-intention.yml
+          if git diff --quiet -- "$form"; then
+            echo "Form dropdown already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$form"
+          git commit -m "chore: sync issue-form topic areas with Mathlib labels"
+          git push
