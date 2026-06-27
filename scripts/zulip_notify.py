@@ -1,33 +1,30 @@
 #!/usr/bin/env python3
 """Reflect the project board's claim lifecycle into a Zulip channel.
 
-This reconciler reads the whole Projects v2 board, compares each issue's current Status against the
-status we last announced (stored per item in a board Text field), and emits the difference to Zulip:
+This reconciler reads the whole Projects v2 board and, for each issue, compares its current Status to
+the status the channel already shows, then emits the difference to Zulip:
 
   * a fresh claim            -> a new announcement message (one Zulip topic per issue);
   * In Progress / In Review  -> a status emoji on that announcement (swapped as the status moves);
   * Completed                -> a :tada: on the announcement, plus a new message in the topic;
-  * released (expired / disclaimed, i.e. an active claim back to Unclaimed) -> an :hourglass_done:
-    on the announcement, plus a new message in the topic;
+  * released (an active claim back to Unclaimed: expired or disclaimed) -> an :hourglass_done: on the
+    announcement, plus a new message in the topic;
   * a re-claim after release  -> a new message in the same topic (the original announcement stays).
 
-Because it diffs *observed* board state rather than reacting to a single event, it captures manual
-board edits (e.g. a maintainer dragging a card to In Progress) that no issue/PR webhook would carry.
-It never changes the board's own lifecycle fields; it only reads them and writes its private state
-field, so it can't interfere with the `intentions` action that owns the board.
+The "status the channel already shows" is read back from Zulip itself: the announcement for an issue
+is the bot's message in the channel that links to that issue, and the bot's own reaction on it
+encodes the last status it reflected (none = Claimed, :construction: = In Progress, :eyes: = In
+Review, :tada: = Completed, :hourglass_done: = released). So there is no bookkeeping stored on the
+board — the board carries only the lifecycle fields the `intentions` action owns, untouched here.
 
-Idempotency: the announcement for an issue is, by definition, the bot's earliest message in that
-issue's topic, so a crash between posting and recording state can't duplicate it — the next run finds
-and reuses it. Follow-ups are de-duplicated against the most recent message in the topic. Combined
-with the workflow's concurrency group (one run at a time), reruns are safe.
-
-State is kept in a board Text field (default "Zulip State") holding JSON {"mid","topic","status"};
-the field is created automatically if absent.
+Because the reaction *is* the state, every run reconciles toward the board and self-heals: a crash
+part-way through a transition is corrected on the next run (messages are posted before the reaction
+marker is set, and de-duplicated against the topic, so nothing doubles up). Diffing observed board
+state also means manual board moves no webhook would carry are picked up.
 """
 
 from __future__ import annotations
 
-import base64
 import json
 import os
 import re
@@ -47,13 +44,14 @@ ZULIP_EMAIL = os.environ["ZULIP_BOT_EMAIL"]
 ZULIP_KEY = os.environ["ZULIP_BOT_API_KEY"]
 ZULIP_STREAM = os.environ["ZULIP_STREAM"]
 
-# Dry run: log every post/reaction/state write that would happen, but make no changes. Used to
-# preview the backfill for existing registrations before anything reaches the channel.
+# Dry run: log every post/reaction that would happen, but make no changes. Used to preview the
+# backfill for existing registrations before anything reaches the channel.
 DRY_RUN = os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes")
 
 STATUS_FIELD = os.environ.get("STATUS_FIELD", "Status")
 EXPIRY_FIELD = os.environ.get("EXPIRY_FIELD", "Claim Expires")
-STATE_FIELD = os.environ.get("STATE_FIELD", "Zulip State")
+# A pre-1.0 version stored state in this board field; it's no longer used and is deleted on sight.
+LEGACY_STATE_FIELD = os.environ.get("STATE_FIELD", "Zulip State")
 
 # Status option names (must match the board / the intentions action config).
 UNCLAIMED, CLAIMED = "Unclaimed", "Claimed"
@@ -61,8 +59,13 @@ IN_PROGRESS, IN_REVIEW, COMPLETED = "In Progress", "In Review", "Completed"
 ACTIVE = {CLAIMED, IN_PROGRESS, IN_REVIEW}
 KNOWN = {UNCLAIMED, CLAIMED, IN_PROGRESS, IN_REVIEW, COMPLETED}
 
-# A status' emoji on the announcement. Claimed is the baseline (no emoji); the rest layer on top.
+# A status' marker reaction on the announcement. Claimed is the baseline (no marker); the others
+# layer on top. This map is also read backwards (emoji -> status) to recover the last shown status.
 EMOJI = {IN_PROGRESS: "construction", IN_REVIEW: "eyes", COMPLETED: "tada", UNCLAIMED: "hourglass_done"}
+STATUS_BY_EMOJI = {v: k for k, v in EMOJI.items()}
+
+ISSUE_LINK = re.compile(rf"/{re.escape(OWNER)}/{re.escape(REPO)}/issues/(\d+)\)")
+ANNOUNCE_MARK = "New project intention"  # identifies the announcement among the bot's messages
 
 TOPIC_MAX = 60       # Zulip's default maximum topic length
 DESC_MAX = 5000      # max chars of the issue description quoted into an announcement
@@ -109,6 +112,7 @@ def gql(query: str, variables: dict) -> dict:
 
 
 def zulip(method: str, path: str, params: dict) -> tuple[int, dict]:
+    import base64
     token = base64.b64encode(f"{ZULIP_EMAIL}:{ZULIP_KEY}".encode()).decode()
     data: bytes | None = urllib.parse.urlencode(params).encode("utf-8")
     url = f"{ZULIP_SITE}/api/v1/{path}"
@@ -123,29 +127,88 @@ def zulip(method: str, path: str, params: dict) -> tuple[int, dict]:
     return _request(req)
 
 
-# --- Zulip actions -----------------------------------------------------------------------------
-_DRY_MID = [9_000_000_000]  # fake, monotonically increasing message ids for dry-run bookkeeping
+_BOT_ID: list[int | None] = [None]
 
 
-def topic_messages(topic: str) -> list[dict]:
-    """The bot's own messages in this topic, oldest first. The earliest is the announcement."""
-    narrow = [
-        {"operator": "stream", "operand": ZULIP_STREAM},
-        {"operator": "topic", "operand": topic},
+def bot_id() -> int:
+    if _BOT_ID[0] is None:
+        _, data = zulip("GET", "users/me", {})
+        if data.get("result") != "success":
+            raise RuntimeError(f"users/me failed: {data}")
+        _BOT_ID[0] = data["user_id"]
+    return _BOT_ID[0]
+
+
+# --- Zulip read: the announcement index ---------------------------------------------------------
+class Channel:
+    """A snapshot of the bot's own messages in the channel, indexed for this run.
+
+    announcements[issue_number] = {"mid", "topic", "reactions"}  (earliest announcement per issue)
+    last_in_topic[topic]        = content of the most recent bot message in that topic
+    """
+
+    def __init__(self, announcements: dict[int, dict], last_in_topic: dict[str, str]):
+        self.announcements = announcements
+        self.last_in_topic = last_in_topic
+
+
+def fetch_channel() -> Channel:
+    narrow = json.dumps([
+        {"operator": "channel", "operand": ZULIP_STREAM},
         {"operator": "sender", "operand": ZULIP_EMAIL},
-    ]
-    status, data = zulip("GET", "messages", {
-        "anchor": "newest", "num_before": 200, "num_after": 0,
-        "narrow": json.dumps(narrow), "apply_markdown": "false",
-    })
-    if data.get("result") != "success":
-        raise RuntimeError(f"reading topic '{topic}' failed: {data}")
-    # The API returns ascending by id, but sort defensively.
-    return sorted(({"id": m["id"], "content": m["content"]} for m in data.get("messages", [])),
-                  key=lambda m: m["id"])
+    ])
+    by_id: dict[int, dict] = {}
+    anchor: str | int = "newest"
+    while True:
+        status, data = zulip("GET", "messages", {
+            "anchor": anchor, "num_before": 1000, "num_after": 0,
+            "narrow": narrow, "apply_markdown": "false",
+        })
+        if data.get("result") != "success":
+            raise RuntimeError(f"reading the channel failed: {data}")
+        msgs = data.get("messages", [])
+        added = False
+        for m in msgs:
+            if m["id"] not in by_id:
+                by_id[m["id"]] = m
+                added = True
+        # Page from the oldest id seen (include_anchor re-returns it, deduped above) rather than
+        # oldest-1, so a message exactly on the boundary is never skipped. Stop on a short or
+        # fully-seen page.
+        if len(msgs) < 1000 or not added:
+            break
+        anchor = min(m["id"] for m in msgs)
+
+    bid = bot_id()
+    announcements: dict[int, dict] = {}
+    last_in_topic: dict[str, str] = {}
+    for m in sorted(by_id.values(), key=lambda x: x["id"]):
+        topic = m["subject"]
+        last_in_topic[topic] = m["content"]  # ascending id, so this ends on the newest
+        if ANNOUNCE_MARK not in m["content"]:
+            continue
+        hit = ISSUE_LINK.search(m["content"])
+        if not hit:
+            continue
+        num = int(hit.group(1))
+        if num not in announcements:  # earliest announcement wins
+            announcements[num] = {
+                "mid": m["id"],
+                "topic": topic,
+                "reactions": {r["emoji_name"] for r in m.get("reactions", []) if r.get("user_id") == bid},
+            }
+    return Channel(announcements, last_in_topic)
 
 
-def _post(topic: str, content: str) -> int:
+# --- Zulip write -------------------------------------------------------------------------------
+_DRY_MID = [9_000_000_000]
+
+
+def post(topic: str, content: str, channel: Channel) -> int:
+    """Post unless an identical message is already the latest in the topic (idempotent on reruns)."""
+    if channel.last_in_topic.get(topic, "").strip() == content.strip():
+        log(f"  = '{topic}': identical message already present; not reposting.")
+        return 0
     if DRY_RUN:
         log(f"  [dry-run] would post to '{topic}':\n      " + content.replace("\n", "\n      "))
         _DRY_MID[0] += 1
@@ -155,25 +218,11 @@ def _post(topic: str, content: str) -> int:
     })
     if data.get("result") != "success":
         raise RuntimeError(f"post to '{topic}' failed: {data}")
+    channel.last_in_topic[topic] = content
     return data["id"]
 
 
-def ensure_announcement(topic: str, content: str, existing: list[dict]) -> int:
-    """Reuse the topic's earliest bot message as the announcement, or post it if there is none."""
-    if existing:
-        return existing[0]["id"]
-    return _post(topic, content)
-
-
-def post_followup(topic: str, content: str, existing: list[dict]) -> int:
-    """Post a follow-up unless the most recent bot message in the topic is already identical (which
-    means a previous run posted it and then failed before recording state)."""
-    if existing and existing[-1]["content"].strip() == content.strip():
-        return existing[-1]["id"]
-    return _post(topic, content)
-
-
-def add_reaction(mid: int | None, emoji_name: str | None) -> None:
+def add_reaction(mid: int, emoji_name: str | None) -> None:
     if not mid or not emoji_name:
         return
     if DRY_RUN:
@@ -185,7 +234,7 @@ def add_reaction(mid: int | None, emoji_name: str | None) -> None:
     raise RuntimeError(f"add :{emoji_name}: to {mid} failed: {data}")
 
 
-def remove_reaction(mid: int | None, emoji_name: str | None) -> None:
+def remove_reaction(mid: int, emoji_name: str | None) -> None:
     if not mid or not emoji_name:
         return
     if DRY_RUN:
@@ -225,7 +274,8 @@ def resolve_project_id() -> str:
 
 
 def load_fields(project_id: str) -> dict:
-    """Return field ids and status option names; create the state field if it's missing."""
+    """Resolve the Status single-select and the optional expiry field, and delete the legacy state
+    field if it is still on the board (this reconciler no longer keeps any state there)."""
     nodes, cursor = [], None
     query = """
       query($id:ID!,$cursor:String){
@@ -247,32 +297,25 @@ def load_fields(project_id: str) -> dict:
     status = next((n for n in nodes if n.get("name") == STATUS_FIELD and n["__typename"] == "ProjectV2SingleSelectField"), None)
     if not status:
         raise RuntimeError(f"No single-select field named {STATUS_FIELD!r} on the board.")
-    names_by_id = {o["id"]: o["name"] for o in status.get("options", [])}
+
+    legacy = next((n for n in nodes if n.get("name") == LEGACY_STATE_FIELD), None)
+    if legacy:
+        delete_field(project_id, legacy["id"], LEGACY_STATE_FIELD)
 
     expiry = next((n for n in nodes if n.get("name") == EXPIRY_FIELD), None)
-    state = next((n for n in nodes if n.get("name") == STATE_FIELD), None)
-    state_id = state["id"] if state else create_text_field(project_id, STATE_FIELD)
-
     return {
         "status_field_id": status["id"],
-        "status_names_by_id": names_by_id,
+        "status_names_by_id": {o["id"]: o["name"] for o in status.get("options", [])},
         "expiry_field_id": expiry["id"] if expiry else None,
-        "state_field_id": state_id,
     }
 
 
-def create_text_field(project_id: str, name: str) -> str | None:
+def delete_field(project_id: str, field_id: str, name: str) -> None:
     if DRY_RUN:
-        log(f"  [dry-run] would create board Text field {name!r}.")
-        return None
-    log(f"Creating board Text field {name!r} for notifier bookkeeping.")
-    data = gql(
-        """mutation($p:ID!,$n:String!){
-          createProjectV2Field(input:{projectId:$p,dataType:TEXT,name:$n}){
-            projectV2Field{ ... on ProjectV2FieldCommon { id } } } }""",
-        {"p": project_id, "n": name},
-    )
-    return data["createProjectV2Field"]["projectV2Field"]["id"]
+        log(f"  [dry-run] would delete legacy board field {name!r}.")
+        return
+    log(f"Deleting unused board field {name!r}.")
+    gql("""mutation($f:ID!){ deleteProjectV2Field(input:{fieldId:$f}){ clientMutationId } }""", {"f": field_id})
 
 
 def list_items(project_id: str, fields: dict) -> list[dict]:
@@ -312,18 +355,14 @@ def list_items(project_id: str, fields: dict) -> list[dict]:
             if it["fieldValues"]["pageInfo"]["hasNextPage"]:
                 log(f"  ! #{c.get('number')}: more than 100 field values; skipping (partial read).")
                 continue
-            status_name, expiry_text, state_text = None, None, None
+            status_name, expiry_text = None, None
             for fv in it["fieldValues"]["nodes"]:
                 fid = (fv.get("field") or {}).get("id")
                 if fv["__typename"] == "ProjectV2ItemFieldSingleSelectValue" and fid == fields["status_field_id"]:
                     status_name = fields["status_names_by_id"].get(fv.get("optionId"))
-                elif fv["__typename"] == "ProjectV2ItemFieldTextValue":
-                    if fid == fields["expiry_field_id"]:
-                        expiry_text = fv.get("text")
-                    elif fid == fields["state_field_id"]:
-                        state_text = fv.get("text")
+                elif fv["__typename"] == "ProjectV2ItemFieldTextValue" and fid == fields["expiry_field_id"]:
+                    expiry_text = fv.get("text")
             out.append({
-                "item_id": it["id"],
                 "number": c["number"],
                 "title": c.get("title") or "",
                 "url": c.get("url") or "",
@@ -332,23 +371,11 @@ def list_items(project_id: str, fields: dict) -> list[dict]:
                 "assignees": [a["login"] for a in c.get("assignees", {}).get("nodes", [])],
                 "status": status_name or UNCLAIMED,
                 "expiry": expiry_text,
-                "state": state_text,
             })
         if not page["pageInfo"]["hasNextPage"]:
             break
         cursor = page["pageInfo"]["endCursor"]
     return out
-
-
-def save_state(project_id: str, state_field_id: str | None, item_id: str, state: dict) -> None:
-    if DRY_RUN or not state_field_id:
-        return
-    gql(
-        """mutation($p:ID!,$i:ID!,$f:ID!,$t:String!){
-          updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{text:$t}}){
-            projectV2Item{ id } } }""",
-        {"p": project_id, "i": item_id, "f": state_field_id, "t": json.dumps(state, separators=(",", ":"))},
-    )
 
 
 # --- message rendering -------------------------------------------------------------------------
@@ -387,7 +414,7 @@ def who(item: dict) -> str:
 
 
 def announcement(item: dict) -> str:
-    lines = [f":new: **New project intention** · {link(item)}", ""]
+    lines = [f":new: **{ANNOUNCE_MARK}** · {link(item)}", ""]
     desc = form_section(item["body"], "What are you working on?")
     if desc:
         lines += [desc if len(desc) <= DESC_MAX else desc[:DESC_MAX].rstrip() + "…", ""]
@@ -421,87 +448,89 @@ def reclaimed_text(item: dict) -> str:
 def reconcile() -> None:
     project_id = resolve_project_id()
     fields = load_fields(project_id)
+    channel = fetch_channel()
     items = list_items(project_id, fields)
     log(f"Reconciling {len(items)} board item(s) against Zulip{' (dry run)' if DRY_RUN else ''}.")
-
     for item in items:
         try:
-            handle(project_id, fields["state_field_id"], item)
+            handle(item, channel)
         except Exception as e:  # one bad item must not stop the rest
             log(f"  ! #{item['number']}: {e}")
 
 
-def reflect_full_state(project_id: str, state_field_id: str | None, item: dict, cur: str) -> None:
-    """Bring a not-yet-tracked item up to its current status from scratch: announce it, set the
-    status emoji, and post the completion follow-up if it is already Completed. Idempotent."""
+def announce_from_scratch(item: dict, cur: str, channel: Channel) -> None:
+    """No announcement exists yet (a fresh claim, or the backfill of an existing registration): post
+    it, then mark the current status. Messages go out before the reaction marker, so a crash leaves
+    the next run able to tell the marker is still owed."""
     topic = topic_for(item)
-    existing = topic_messages(topic)
-    mid = ensure_announcement(topic, announcement(item), existing)
-    add_reaction(mid, EMOJI.get(cur))
+    mid = post(topic, announcement(item), channel)
     if cur == COMPLETED:
-        existing = topic_messages(topic)
-        post_followup(topic, completed_text(item), existing)
+        post(topic, completed_text(item), channel)
+        add_reaction(mid, EMOJI[COMPLETED])
         log(f"  ✓ #{item['number']}: announced + completed (first seen as Completed).")
     else:
+        add_reaction(mid, EMOJI.get(cur))
         log(f"  + #{item['number']}: announced (first seen as {cur}).")
-    save_state(project_id, state_field_id, item["item_id"], {"mid": mid, "topic": topic, "status": cur})
 
 
-def handle(project_id: str, state_field_id: str | None, item: dict) -> None:
+MARKERS = set(STATUS_BY_EMOJI)
+
+
+def set_marker(mid: int, desired: str | None, present: set[str]) -> None:
+    """Make the announcement's marker reactions exactly {desired} (or none). Adds the desired one
+    before removing the others so the status is never momentarily blank, and clears any stale
+    markers a crash may have left behind."""
+    if desired and desired not in present:
+        add_reaction(mid, desired)
+    for emoji in present:
+        if emoji != desired:
+            remove_reaction(mid, emoji)
+
+
+def handle(item: dict, channel: Channel) -> None:
     cur = item["status"]
     if cur not in KNOWN:
         log(f"  ? #{item['number']}: unrecognised status {cur!r}; leaving alone.")
         return
 
-    state = None
-    if item["state"]:
-        try:
-            state = json.loads(item["state"])
-        except json.JSONDecodeError:
-            state = None
-
-    # First time we see this item (also the backfill for existing registrations).
-    if state is None:
+    ann = channel.announcements.get(item["number"])
+    if ann is None:
         if cur in ACTIVE or cur == COMPLETED:
-            reflect_full_state(project_id, state_field_id, item, cur)
-        else:  # Unclaimed and never tracked: nothing to say, just record the baseline
-            save_state(project_id, state_field_id, item["item_id"], {"mid": None, "topic": None, "status": cur})
-        return
+            announce_from_scratch(item, cur, channel)
+        return  # Unclaimed and never announced: nothing to say
 
-    prev = state.get("status")
-    if prev == cur:
-        return
+    mid, topic = ann["mid"], ann["topic"]
+    present = ann["reactions"] & MARKERS  # marker reactions currently on the announcement
+    desired = EMOJI.get(cur)             # marker for the current status (None for Claimed)
 
-    mid, topic = state.get("mid"), state.get("topic") or topic_for(item)
-
-    # No announcement was ever posted (item was first seen Unclaimed). A move into an active/terminal
-    # status starts a fresh claim cycle; a move between non-active statuses just updates the baseline.
-    if not mid:
-        if cur in ACTIVE or cur == COMPLETED:
-            reflect_full_state(project_id, state_field_id, item, cur)
-        else:
-            save_state(project_id, state_field_id, item["item_id"], {"mid": None, "topic": topic, "status": cur})
-        return
-
-    # Swap the announcement's status emoji to match the new status.
-    remove_reaction(mid, EMOJI.get(prev))
-    add_reaction(mid, EMOJI.get(cur))
-
+    # Reconcile toward the current status. Each branch decides whether a transition just happened
+    # from the *specific* markers present (not a single guessed "previous"), so duplicate or stale
+    # markers from an interrupted run resolve deterministically. Follow-up messages go out before the
+    # marker is set and de-dup against the topic, so a crash between the two repairs cleanly.
     if cur == COMPLETED:
-        post_followup(topic, completed_text(item), topic_messages(topic))
-        log(f"  ✓ #{item['number']}: {prev} -> Completed.")
-    elif cur == UNCLAIMED and prev in ACTIVE:
-        post_followup(topic, released_text(item), topic_messages(topic))
-        log(f"  ⌛ #{item['number']}: {prev} -> released.")
-    elif cur == CLAIMED and prev == UNCLAIMED:
-        post_followup(topic, reclaimed_text(item), topic_messages(topic))
-        log(f"  + #{item['number']}: re-claimed.")
-    else:
-        # In Progress / In Review / regression to Claimed, or Completed -> Unclaimed (reopened):
-        # the emoji swap above is the whole change.
-        log(f"  ~ #{item['number']}: {prev} -> {cur}.")
-
-    save_state(project_id, state_field_id, item["item_id"], {"mid": mid, "topic": topic, "status": cur})
+        if EMOJI[COMPLETED] not in present:           # transitioning in (not already completed)
+            post(topic, completed_text(item), channel)
+            log(f"  ✓ #{item['number']}: -> Completed.")
+        set_marker(mid, EMOJI[COMPLETED], present)
+    elif cur == UNCLAIMED:
+        if EMOJI[UNCLAIMED] in present:               # already shown as released: just tidy markers
+            set_marker(mid, EMOJI[UNCLAIMED], present)
+        elif EMOJI[COMPLETED] in present:             # Completed -> Unclaimed = reopened, no message
+            set_marker(mid, EMOJI[UNCLAIMED], present)
+            log(f"  ~ #{item['number']}: reopened (Completed -> Unclaimed).")
+        else:                                          # active/Claimed -> Unclaimed = released
+            post(topic, released_text(item), channel)
+            set_marker(mid, EMOJI[UNCLAIMED], present)
+            log(f"  ⌛ #{item['number']}: released.")
+    elif cur == CLAIMED:
+        if EMOJI[UNCLAIMED] in present:               # released -> Claimed = re-claimed
+            post(topic, reclaimed_text(item), channel)
+            log(f"  + #{item['number']}: re-claimed.")
+        set_marker(mid, None, present)                # Claimed is the baseline: clear all markers
+    else:                                              # In Progress / In Review
+        if desired not in present:
+            log(f"  ~ #{item['number']}: -> {cur}.")
+        set_marker(mid, desired, present)
 
 
 if __name__ == "__main__":
