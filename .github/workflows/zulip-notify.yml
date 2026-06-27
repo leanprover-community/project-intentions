@@ -1,0 +1,51 @@
+# Reflects the project board's claim lifecycle into the private "Project intentions" Zulip channel:
+# a fresh claim is announced (one topic per issue), status changes (In Progress / In Review) swap an
+# emoji on that announcement, and completion or release (expiry / disclaim) add an emoji and a new
+# message in the topic. The script reconciles observed board state against what it last announced,
+# so it also catches manual board edits no webhook would carry. See scripts/zulip_notify.py.
+name: Zulip notify
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened]
+  issue_comment:
+    types: [created]
+  schedule:
+    # Every 30 minutes, to pick up manual board moves and the expiry sweep (which the action runs
+    # every 6 hours). GitHub cron is loose, so treat this as "within ~30 min", not on the minute.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log what would be posted without touching Zulip or the board"
+        type: boolean
+        default: false
+
+# One reconcile at a time across the whole board; let a running pass finish rather than cancel it
+# mid-write (a cancelled run could post a message but not record it, then re-post next time).
+concurrency:
+  group: zulip-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # actions/checkout
+    steps:
+      - uses: actions/checkout@v4
+      - id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.INTENTIONS_BOT_APP_ID }}
+          private-key: ${{ secrets.INTENTIONS_BOT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - run: python3 scripts/zulip_notify.py
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PROJECT_TITLE: "Project Intentions"
+          ZULIP_SITE: ${{ vars.ZULIP_SITE }}
+          ZULIP_BOT_EMAIL: ${{ vars.ZULIP_BOT_EMAIL }}
+          ZULIP_BOT_API_KEY: ${{ secrets.ZULIP_BOT_API_KEY }}
+          ZULIP_STREAM: ${{ vars.ZULIP_STREAM }}
+          DRY_RUN: ${{ inputs.dry_run }}
