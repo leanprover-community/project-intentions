@@ -1,10 +1,13 @@
 # Mirrors Mathlib's `t-` topic labels (name, colour, description) into this repository, so the
-# "Relevant Mathlib topic areas" dropdown maps onto real, filterable labels. Run it by hand from the
-# Actions tab whenever Mathlib gains or renames a topic area. Additive: it creates or updates `t-`
-# labels but never deletes one, so a label still in use here won't vanish if Mathlib drops it.
+# "Relevant Mathlib topic areas" dropdown maps onto real, filterable labels. Runs daily, and on
+# demand from the Actions tab. Additive: it creates or updates `t-` labels but never deletes one, so
+# a label still in use here won't vanish if Mathlib drops it.
 name: Sync topic labels
 
 on:
+  schedule:
+    # Daily, offset off the hour (GitHub cron is loose).
+    - cron: "23 4 * * *"
   workflow_dispatch: {}
 
 jobs:
