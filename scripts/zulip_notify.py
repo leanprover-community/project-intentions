@@ -65,6 +65,7 @@ KNOWN = {UNCLAIMED, CLAIMED, IN_PROGRESS, IN_REVIEW, COMPLETED}
 EMOJI = {IN_PROGRESS: "construction", IN_REVIEW: "eyes", COMPLETED: "tada", UNCLAIMED: "hourglass_done"}
 
 TOPIC_MAX = 60       # Zulip's default maximum topic length
+DESC_MAX = 5000      # max chars of the issue description quoted into an announcement
 HTTP_TIMEOUT = 30    # seconds
 
 
@@ -389,7 +390,7 @@ def announcement(item: dict) -> str:
     lines = [f":new: **New project intention** · {link(item)}", ""]
     desc = form_section(item["body"], "What are you working on?")
     if desc:
-        lines += [desc if len(desc) <= 600 else desc[:600].rstrip() + "…", ""]
+        lines += [desc if len(desc) <= DESC_MAX else desc[:DESC_MAX].rstrip() + "…", ""]
     meta = [f"Registered by **{who(item)}**"]
     exp = format_expiry(item["expiry"])
     if exp:
