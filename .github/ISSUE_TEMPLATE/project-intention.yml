@@ -85,6 +85,27 @@ body:
       placeholder: https://github.com/...
     validations:
       required: false
+  - type: dropdown
+    id: visibility
+    attributes:
+      label: Are outside collaborators accepted to join the project?
+      description: Ans 
+      options:
+        - Yes
+        - No
+    validations:
+      required: true
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: If outside collaborators are accepted, how and what?
+      description: >
+        Provide information for external collaborators willing to join the project, if they're allowed: how can they reach out, what do you expect them to collaborate on, is there a dedicated Zulip channel,
+        etc...
+      placeholder: Provide all information for external collaborators.
+    validations:
+      required: false
   - type: input
     id: event
     attributes:
