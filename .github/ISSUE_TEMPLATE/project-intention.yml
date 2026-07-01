@@ -116,6 +116,22 @@ body:
         institution or programme if you're happy to, and the supervisor if relevant.
     validations:
       required: false
+  - type: dropdown
+    id: ai-use
+    attributes:
+      label: How much AI is involved?
+      description: >
+        Honour system. Pick the level that best describes this work, so people who care either way can
+        find or avoid it. The levels run from no AI at all to a fully autonomous AI project.
+      options:
+        - No AI use
+        - AIs consulted as research assistants
+        - Some AI code, but human reviewed
+        - Some code only reviewed by AI
+        - AI written, following a human roadmap
+        - Autonomous AI project
+    validations:
+      required: true
   - type: input
     id: expiry
     attributes:
