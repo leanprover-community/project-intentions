@@ -116,18 +116,22 @@ body:
         institution or programme if you're happy to, and the supervisor if relevant.
     validations:
       required: false
-  - type: checkboxes
+  - type: dropdown
     id: ai-use
     attributes:
-      label: AI assistance
+      label: How much AI is involved?
       description: >
-        Optional, and honour system. Tick whichever applies, so people who care either way can find or
-        avoid this work. Leave both blank if neither fits or you'd rather not say.
+        Honour system. Pick the level that best describes this work, so people who care either way can
+        find or avoid it. The levels run from no AI at all to a fully autonomous AI project.
       options:
-        - label: This project is not using AI.
-        - label: This project makes significant use of AI (LLMs, proof-search agents, etc.).
+        - No AI use
+        - AIs consulted as research assistants
+        - Some AI code, but human reviewed
+        - Some code only reviewed by AI
+        - AI written, following a human roadmap
+        - Autonomous AI project
     validations:
-      required: false
+      required: true
   - type: input
     id: expiry
     attributes:
