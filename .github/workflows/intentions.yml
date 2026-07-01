@@ -27,6 +27,7 @@ jobs:
       auto-add-labels: "intention"           # only add issues opened via the template (which carries this label)
       claim-on-open: true                    # register from the form alone; no separate `claim` comment
       claim-expiry-field: "Credible expiry date"  # read the auto-claim expiry from this form field
+      claim-expiry-require-date: true              # that field must be an absolute date, not a duration
       app-id: ${{ vars.INTENTIONS_BOT_APP_ID }}
     secrets:
       app-private-key: ${{ secrets.INTENTIONS_BOT_APP_PRIVATE_KEY }}

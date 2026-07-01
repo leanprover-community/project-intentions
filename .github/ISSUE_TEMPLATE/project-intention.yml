@@ -138,9 +138,10 @@ body:
       label: Credible expiry date
       description: >
         When do you genuinely expect to have made real progress or finished? Be honest: an expiry you
-        don't believe is worse than none. Maximum six months. Accepts a duration like `3 months` or a
-        date like `2026-09-01`.
-      placeholder: e.g. 3 months, or 2026-09-01
+        don't believe is worse than none. Maximum six months out. Give an actual date in `YYYY-MM-DD`
+        form (e.g. `2026-09-01`), not a duration like `6 months`, so anyone reading the board sees the
+        deadline without working out when you claimed it.
+      placeholder: e.g. 2026-09-01
     validations:
       required: true
   - type: markdown
