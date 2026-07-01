@@ -116,6 +116,18 @@ body:
         institution or programme if you're happy to, and the supervisor if relevant.
     validations:
       required: false
+  - type: checkboxes
+    id: ai-use
+    attributes:
+      label: AI assistance
+      description: >
+        Optional, and honour system. Tick whichever applies, so people who care either way can find or
+        avoid this work. Leave both blank if neither fits or you'd rather not say.
+      options:
+        - label: This project is not using AI.
+        - label: This project makes significant use of AI (LLMs, proof-search agents, etc.).
+    validations:
+      required: false
   - type: input
     id: expiry
     attributes:
