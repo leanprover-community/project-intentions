@@ -49,7 +49,7 @@ believe they're still working on, not what they once intended.
 ## Expiry
 
 - Default: **90 days** (about three months).
-- Maximum: **180 days** (about six months).
+- Maximum: Normally **180 days** (about six months): if you plan that the project will last more than six months (e. g. for a PhD thesis), justify your choice.
 
 Renew by claiming again before it lapses. A lapsed registration isn't a judgement on you; it just
 means the information went stale, which is exactly when it should stop being shown as current.
