@@ -86,18 +86,19 @@ body:
     validations:
       required: false
   - type: dropdown
-    id: visibility
+    id: collaborators-accepted
     attributes:
       label: Are outside collaborators accepted to join the project?
-      description: Ans 
+      description: >
+        Whether people not already involved are welcome to join in. If yes, use the next field to say
+        how and on what.
       options:
         - Yes
         - No
     validations:
       required: true
-  
   - type: textarea
-    id: description
+    id: collaborators-details
     attributes:
       label: If outside collaborators are accepted, how and what?
       description: >
