@@ -93,8 +93,8 @@ body:
         Whether people not already involved are welcome to join in. If yes, use the next field to say
         how and on what.
       options:
-        - Yes
-        - No
+        - "Yes"
+        - "No"
     validations:
       required: true
   - type: textarea
