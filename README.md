@@ -1,10 +1,10 @@
 # Project Intentions
 
-This Github repo provides a public noticeboard for recording intentions to work on formalization projects in the Lean community.
+This Github repo provides a [Project Intentions board](https://github.com/orgs/leanprover-community/projects/34)  for recording intentions to work on formalization projects in the Lean community.
 If you're working on a project, or about to start one, you can open an issue here to say so.
 The point is to help people find collaborators and avoid quietly duplicating each other's work.
 
-It's not a reservation system, although credible intentions about student projects should certainly be respected on a best effort basis!
+It's not a reservation system, although credible intentions about student projects should certainly be respected.
 
 It's brand new, and experimental. We'll see if people use it, and iterate as needed to make it more useful. Feedback welcome.
 
@@ -29,22 +29,18 @@ It's brand new, and experimental. We'll see if people use it, and iterate as nee
   you actually believe: a date by which you expect to have made real progress or finished. If you're
   not confident you'll have moved in a month, don't register for six. Stale, optimistic claims are
   worse than no claim at all, because they discourage others without delivering anything.
-- **Don't be lazy.** If you've made a registration here, use that as motivation to work hard and get things done.
+- **Don't be lazy.** If you've made a registration here, use that as motivation to work hard and get things done. If your plans change, don't hesitate to come back and modify your registration.
 - **Don't post anything you wouldn't publish.** This repository is public. For private work, describe
   it only at the level you're happy to make public; leave out anything confidential.
 
 ## How to register
 
-1. Open a new issue using the **Project intention** template, and fill it in. Say what you're working
+1. Go to the [Project Intentions board](https://github.com/orgs/leanprover-community/projects/34) and click `Add Item` under any of the four main sections: "Planned", "In Progress", "In Review" or "Completed".
+1. In the field that opens at the bottom of your window, type the title of your project, and then "Create a New Issue"
+1. Without touching the "Repository" (it should remain `leanprover-community/project-intentions`), select `Project Intention` and fill the template. Say what you're working
    on, whether it's public or private, the credible expiry date, and the other details the template
    asks for. Submitting the form registers you — the bot reads your expiry and comments to confirm,
    with no separate step.
-2. When something changes, comment `claim` again to renew or extend (a bare `claim` uses the default
-   3 months; `claim 6 weeks` or `claim 2026-09-01` sets your own, up to the six-month maximum). Use
-   `disclaim` to release a registration early once you've stopped (or finished).
-
-Registrations that lapse are swept automatically, so the registry reflects what people actually
-believe they're still working on, not what they once intended.
 
 ## Expiry
 
