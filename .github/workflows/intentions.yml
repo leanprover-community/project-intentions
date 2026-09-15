@@ -37,6 +37,13 @@ jobs:
       claim-expiry-field: "Credible expiry date"  # read the auto-claim expiry from this form field
       claim-expiry-require-date: true              # that field must be an absolute date, not a duration
       claim-participants-field: "Participants"     # register listed co-participants alongside the author
+      participant-claim: true                # the author and listed participants may claim from any column
+      status-commands: true                  # `progress` / `review` / `done` move a card without a PR
+      enforce-holder: true                   # the sweep gives every card a column and an owner
+      # Cc'd, alongside the issue's author, whenever a claim is declined and on every board repair
+      # or participants warning. Deliberately one person: the repository's 30 admins are inherited
+      # org-wide and are not all watching this board. Add handles here to widen it.
+      notify-maintainers: "faenuccio"
       app-id: ${{ vars.INTENTIONS_BOT_APP_ID }}
     secrets:
       app-private-key: ${{ secrets.INTENTIONS_BOT_APP_PRIVATE_KEY }}

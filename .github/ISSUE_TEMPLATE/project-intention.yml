@@ -32,7 +32,8 @@ body:
     attributes:
       label: Participants
       description: >
-        The GitHub handles of everyone working on this with you, e.g. `@alice, @bob`. You're
+        The GitHub handles of everyone working on this with you, each with its leading `@`, e.g.
+        `@alice, @bob` — a name written without the `@` is not recognised. You're
         registered automatically as the author, so there's no need to list yourself. The bot
         registers everyone it can alongside you; GitHub only lets it assign org members,
         collaborators, and people who have commented on the issue, and the bot will name anyone it

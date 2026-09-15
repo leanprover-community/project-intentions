@@ -52,8 +52,10 @@ Registration goes through the issue form above, and the bot keeps the board in s
 ### Registering as a group
 
 If several people are working on the project, list their GitHub handles in the form's
-**Participants** field (e.g. `@alice, @bob`; you're included automatically as the author). The bot
-registers everyone alongside you, and the board's Assignees column shows the whole team.
+**Participants** field (e.g. `@alice, @bob`; you're included automatically as the author). Keep the
+leading `@` on each handle: a name written without it isn't recognised, though the bot will tell you
+so rather than quietly registering nobody. The bot registers everyone alongside you, and the board's
+Assignees column shows the whole team.
 
 If someone you listed is not a member of the `leanprover-community` organization and has not
 commented on the issue, GitHub won't let the bot assign them. The confirmation comment says so and
@@ -64,6 +66,22 @@ To add participants after registering, edit the issue body and add their handle 
 `### Participants` heading (add the heading yourself if your issue predates the field), then have
 them comment `claim`. Removing a handle from the list doesn't remove someone already registered: a
 participant must comment `disclaim` to step back, or a maintainer can unassign them.
+
+### Moving your intention between columns
+
+You don't need a maintainer to move your own card. Comment on the issue with one word:
+
+| Comment | Moves the card to |
+|---|---|
+| `progress` | **In Progress** — you've started work. |
+| `review` | **In Review** — it's out for review. |
+| `done` | **Completed** — it's finished. |
+| `disclaim` | **Abandoned** — you're stepping back and anyone may pick it up. |
+| `claim` | **Planned** — registers you again. |
+
+Anyone registered on the intention can use these, as can the author and anyone listed in the
+Participants field. The author and listed participants can always `claim`, whatever column the card
+is in, so you'll never be told that your own intention is unavailable.
 
 ## Expiry
 
