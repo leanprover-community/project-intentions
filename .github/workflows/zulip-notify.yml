@@ -44,6 +44,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PROJECT_TITLE: "Project Intentions"
+          # Must stay in step with the status-* inputs in intentions.yml: this board renames two of
+          # the action's states, and a status this script doesn't recognise is never announced.
+          STATUS_UNCLAIMED: "Abandoned"
+          STATUS_CLAIMED: "Planned"
+          STATUS_IN_PROGRESS: "In Progress"
+          STATUS_IN_REVIEW: "In Review"
+          STATUS_COMPLETED: "Completed"
           ZULIP_SITE: ${{ vars.ZULIP_SITE }}
           ZULIP_BOT_EMAIL: ${{ vars.ZULIP_BOT_EMAIL }}
           ZULIP_BOT_API_KEY: ${{ secrets.ZULIP_BOT_API_KEY }}

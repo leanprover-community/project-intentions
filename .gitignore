@@ -1,0 +1,4 @@
+# Byte-code caches, written by Python whenever the scripts in scripts/ are run or compiled.
+# They are machine- and version-specific and must never be committed.
+__pycache__/
+*.py[cod]

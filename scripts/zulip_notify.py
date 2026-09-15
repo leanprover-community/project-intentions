@@ -53,9 +53,17 @@ EXPIRY_FIELD = os.environ.get("EXPIRY_FIELD", "Claim Expires")
 # A pre-1.0 version stored state in this board field; it's no longer used and is deleted on sight.
 LEGACY_STATE_FIELD = os.environ.get("STATE_FIELD", "Zulip State")
 
-# Status option names (must match the board / the intentions action config).
-UNCLAIMED, CLAIMED = "Unclaimed", "Claimed"
-IN_PROGRESS, IN_REVIEW, COMPLETED = "In Progress", "In Review", "Completed"
+# Status option names. These must match the board's actual Status options, and therefore the
+# status-* inputs the caller workflow passes to the intentions action: a name this script doesn't
+# recognise is skipped by `handle`, so a board rename that reaches only one of the two silently
+# stops announcements for that status. The defaults are the action's own, for a board that hasn't
+# renamed anything; this board maps Claimed -> "Planned" and Unclaimed -> "Abandoned" in the
+# workflow's env block.
+UNCLAIMED = os.environ.get("STATUS_UNCLAIMED", "Unclaimed")
+CLAIMED = os.environ.get("STATUS_CLAIMED", "Claimed")
+IN_PROGRESS = os.environ.get("STATUS_IN_PROGRESS", "In Progress")
+IN_REVIEW = os.environ.get("STATUS_IN_REVIEW", "In Review")
+COMPLETED = os.environ.get("STATUS_COMPLETED", "Completed")
 ACTIVE = {CLAIMED, IN_PROGRESS, IN_REVIEW}
 KNOWN = {UNCLAIMED, CLAIMED, IN_PROGRESS, IN_REVIEW, COMPLETED}
 
