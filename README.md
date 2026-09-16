@@ -67,6 +67,22 @@ To add participants after registering, edit the issue body and add their handle 
 them comment `claim`. Removing a handle from the list doesn't remove someone already registered: a
 participant must comment `disclaim` to step back, or a maintainer can unassign them.
 
+### The five columns
+
+Every intention sits in exactly one column of the board:
+
+| Column | What it means |
+|---|---|
+| **Planned** | Someone has registered themselves, with an expiry date. |
+| **In Progress** | Work is actively underway. |
+| **In Review** | The work is out for review. |
+| **Completed** | Finished, or the issue was closed. |
+| **Abandoned** | The work won't be pursued, and anyone is free to pick it up. |
+
+**Only intentions in *Planned* expire.** An intention in any other column is left alone by the
+expiry sweep, so moving yours to *In Progress* when you actually start work takes it out of the
+expiry system altogether. See [Expiry](#expiry) below.
+
 ### Moving your intention between columns
 
 You don't need a maintainer to move your own card. Comment on the issue with one word:
@@ -85,11 +101,30 @@ is in, so you'll never be told that your own intention is unavailable.
 
 ## Expiry
 
-- Default: **90 days** (about three months).
-- Maximum: Normally **180 days** (about six months): if you plan that the project will last more than six months (e. g. for a PhD thesis), justify your choice.
+**Expiry applies only to intentions in the *Planned* column.** Once yours is *In Progress* (comment
+`progress`), *In Review*, *Completed* or *Abandoned*, it is not subject to expiry at all and the
+date recorded against it no longer matters. Nothing is ever taken away from you because you were
+busy working: it is the unstarted registration, not the active project, that goes stale.
 
-Renew by claiming again before it lapses. A lapsed registration isn't a judgement on you; it just
-means the information went stale, which is exactly when it should stop being shown as current.
+For an intention that is still *Planned*:
+
+- Default: **90 days** (about three months), used when the form gives no date the bot can use.
+- Maximum: normally **180 days** (about six months). If you expect the project to last longer — a
+  doctoral thesis, for instance — say so in the issue and ask a maintainer.
+- The date comes from the **Credible expiry date** field of the registration form, and must be an
+  actual date in `YYYY-MM-DD` form. A duration such as "6 months", or a date beyond the maximum, is
+  refused and the 90-day default is recorded instead; the bot says so in the comment it posts when
+  it registers you, so it is worth reading that comment.
+
+**To renew or change the date**, comment on the issue with `claim` followed by the date you intend,
+for example `claim 2027-01-31`. Any registered participant may do this, not only the author.
+
+**If the date passes** without a renewal, the bot moves the intention to *Abandoned*, removes
+everyone assigned to it, clears the note, and comments to say that the registration has lapsed. The
+issue itself is not closed and nothing is deleted, but the intention is then free for anyone to take
+up, its former holders having no special claim on it. A lapsed registration isn't a judgement on
+you; it just means the information went stale, which is exactly when it should stop being shown as
+current — and you are welcome to claim it again.
 
 ## How this works under the hood
 
