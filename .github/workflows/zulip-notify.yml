@@ -33,9 +33,9 @@ jobs:
     permissions:
       contents: read   # actions/checkout
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ vars.INTENTIONS_BOT_APP_ID }}
           private-key: ${{ secrets.INTENTIONS_BOT_APP_PRIVATE_KEY }}
