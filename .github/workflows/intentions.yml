@@ -19,7 +19,7 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
-    uses: leanprover-community/intentions/.github/workflows/intentions.yml@d302e11f5cf065a8a81de5a4d4c05eb9b7b70f70 # v1
+    uses: leanprover-community/intentions/.github/workflows/intentions.yml@542485c0a66f5bb72c388089fef227b0b679d301 # v1.7.1
     with:
       project-title: "Project Intentions"   # the exact title of the Projects v2 board
       # This board renames the action's states, so every status option must be mapped explicitly —
