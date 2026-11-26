@@ -30,8 +30,8 @@ jobs:
       status-in-progress: "In Progress"      # work is actively underway
       status-in-review: "In Review"          # under review
       status-completed: "Completed"          # finished or closed
-      default-ttl: "90d"                     # three months (the action counts a month as 30 days)
-      max-ttl: "180d"                        # six months
+      default-ttl: "180d"                    # six months (the action counts a month as 30 days)
+      max-ttl: "360d"                        # twelve months
       auto-add-labels: "intention"           # only add issues opened via the template (which carries this label)
       claim-on-open: true                    # register from the form alone; no separate `claim` comment
       claim-expiry-field: "Credible expiry date"  # read the auto-claim expiry from this form field
