@@ -97,14 +97,14 @@ is in, so you'll never be told that your own intention is unavailable.
 
 ## Expiry
 
-When creating an intention, an expiry date is required. We impose a maximum of six months to start a 
-*planned* intention, the default being 3 months. More precisely:
-- Default: **90 days** (about three months), used when the form gives no date the bot can use.
-- Maximum: normally **180 days** (about six months). If you expect the project to last longer — a
+When creating an intention, an expiry date is required. We impose a maximum of twelve months to start a
+*planned* intention, the default being six months. More precisely:
+- Default: **180 days** (about six months), used when the form gives no date the bot can use.
+- Maximum: normally **360 days** (about twelve months). If you expect the project to last longer — a
   doctoral thesis, for instance — say so in the issue and ask a maintainer.
 - The date comes from the **Credible expiry date** field of the registration form, and must be an
   actual date in `YYYY-MM-DD` form. A duration such as "6 months", or a date beyond the maximum, is
-  refused and the 90-day default is recorded instead; the bot says so in the comment it posts when
+  refused and the 180-day default is recorded instead; the bot says so in the comment it posts when
   it registers you, so it is worth reading that comment.
 
 **Expiry applies only to intentions in the *Planned* column.** Once yours is *In Progress* (comment
